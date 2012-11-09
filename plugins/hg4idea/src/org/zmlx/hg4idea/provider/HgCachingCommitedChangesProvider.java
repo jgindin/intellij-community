@@ -44,6 +44,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class HgCachingCommitedChangesProvider implements CachingCommittedChangesProvider<CommittedChangeList, ChangeBrowserSettings> {
@@ -135,7 +136,7 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
   }
 
   public boolean refreshCacheByNumber() {
-    return false;
+    return true;
   }
 
   @Nls
@@ -198,8 +199,43 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
     List<CommittedChangeList> result = new LinkedList<CommittedChangeList>();
     HgLogCommand hgLogCommand = new HgLogCommand(project);
     hgLogCommand.setLogFile(false);
+
+    List<String> args = null;
+    if (null != changeBrowserSettings) {
+      args = new ArrayList<String>();
+
+      Date dateAfter = changeBrowserSettings.getDateAfter();
+      if (null != dateAfter) {
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        args.add("-d");
+        args.add(">" + dateFormatter.format(dateAfter));
+      }
+
+      Date dateBefore = changeBrowserSettings.getDateBefore();
+      if (null != dateBefore ) {
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+        args.add("-d");
+        args.add("<" + dateFormatter.format(dateBefore));
+
+        // Don't try to get ALL revisions...performance is just too bad. Instead, enforce a sane number of results.
+        maxCount = maxCount == 0 ? 500 : maxCount;
+      }
+
+      if (changeBrowserSettings.USE_CHANGE_AFTER_FILTER) {
+        args.add("-r" + changeBrowserSettings.getChangeAfterFilter() + ":");
+      }
+
+      if (changeBrowserSettings.USE_CHANGE_BEFORE_FILTER) {
+        args.add("-r");
+        args.add("'reverse(:" + changeBrowserSettings.getChangeBeforeFilter() + ")'");
+
+        // Don't try to get ALL revisions...performance is just too bad. Instead, enforce a sane number of results.
+        maxCount = maxCount == 0 ? 500 : maxCount;
+      }
+    }
+
     List<HgFileRevision> localRevisions =
-      hgLogCommand.execute(hgFile, maxCount == 0 ? -1 : maxCount, true); //can be empty
+      hgLogCommand.execute(hgFile, maxCount == 0 ? -1 : maxCount, true, args);
 
     Collections.reverse(localRevisions);
 
