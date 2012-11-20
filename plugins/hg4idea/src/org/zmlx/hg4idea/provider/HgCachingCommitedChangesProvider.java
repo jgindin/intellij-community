@@ -37,6 +37,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.zmlx.hg4idea.*;
 import org.zmlx.hg4idea.command.HgLogCommand;
+import org.zmlx.hg4idea.ui.HgVersionFilterComponent;
 import org.zmlx.hg4idea.util.HgUtil;
 
 import java.awt.datatransfer.StringSelection;
@@ -44,6 +45,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class HgCachingCommitedChangesProvider implements CachingCommittedChangesProvider<CommittedChangeList, ChangeBrowserSettings> {
@@ -135,7 +137,7 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
   }
 
   public boolean refreshCacheByNumber() {
-    return false;
+    return true;
   }
 
   @Nls
@@ -166,8 +168,8 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
     return new ChangeBrowserSettings();
   }
 
-  public ChangesBrowserSettingsEditor<ChangeBrowserSettings> createFilterUI(boolean b) {
-    return null;
+  public ChangesBrowserSettingsEditor<ChangeBrowserSettings> createFilterUI(boolean showDateFilter) {
+    return new HgVersionFilterComponent(showDateFilter);
   }
 
   @Nullable
@@ -198,8 +200,16 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
     List<CommittedChangeList> result = new LinkedList<CommittedChangeList>();
     HgLogCommand hgLogCommand = new HgLogCommand(project);
     hgLogCommand.setLogFile(false);
+
+    List<String> args = null;
+    if (null != changeBrowserSettings) {
+      HgLogArgsBuilder argsBuilder = new HgLogArgsBuilder(changeBrowserSettings, maxCount);
+      args = argsBuilder.getLogArgs();
+      maxCount = argsBuilder.getAdjustedMaxCount();
+    }
+
     List<HgFileRevision> localRevisions =
-      hgLogCommand.execute(hgFile, maxCount == 0 ? -1 : maxCount, true); //can be empty
+      hgLogCommand.execute(hgFile, maxCount == 0 ? -1 : maxCount, true, args);
 
     Collections.reverse(localRevisions);
 
@@ -343,4 +353,90 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
       return branch.isEmpty() ? "default" : branch;
     }
   };
+
+
+
+  private static class HgLogArgsBuilder {
+
+    private final ChangeBrowserSettings myBrowserSettings;
+    private int myAdjustedMaxCount;
+
+    HgLogArgsBuilder(ChangeBrowserSettings browserSettings, int maxCount) {
+      myBrowserSettings = browserSettings;
+      myAdjustedMaxCount = maxCount;
+    }
+
+    List<String> getLogArgs() {
+
+      StringBuilder args = new StringBuilder();
+
+      Date afterDate = myBrowserSettings.getDateAfter();
+      Date beforeDate = myBrowserSettings.getDateBefore();
+      Long afterFilter = myBrowserSettings.getChangeAfterFilter();
+      Long beforeFilter = myBrowserSettings.getChangeBeforeFilter();
+      String author = myBrowserSettings.getUserFilter();
+
+      final SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+      if ((null != afterFilter) && (null != beforeFilter)) {
+        args.append(afterFilter).append(":").append(beforeFilter);
+      }
+      else if (null != afterFilter) {
+        args.append(afterFilter).append(":");
+      }
+      else if (null != beforeFilter) {
+        args.append("'reverse(:").append(beforeFilter).append(")'");
+
+        // Don't try to get ALL revisions...performance is just too bad. Instead, enforce a sane number of results.
+        myAdjustedMaxCount = myAdjustedMaxCount == 0 ? 500 : myAdjustedMaxCount;
+      }
+
+      if (null != afterDate) {
+        if (args.length()>0) {
+          args.append(" and ");
+        }
+        args.append("date('>").append(dateFormatter.format(afterDate)).append("')");
+      }
+
+      if (null != beforeDate ) {
+        if (args.length()>0) {
+          args.append(" and ");
+        }
+        else {
+          // Don't try to get ALL revisions...performance is just too bad. Instead, enforce a sane number of results.
+          myAdjustedMaxCount = myAdjustedMaxCount == 0 ? 500 : myAdjustedMaxCount;
+        }
+
+        args.append("date('<").append(dateFormatter.format(beforeDate)).append("')");
+      }
+
+      if (null != author) {
+        if (args.length()>0) {
+          args.append(" and ");
+          args.append("user('").append(author).append("')");
+        }
+        else {
+          // Don't try to get ALL revisions...performance is just too bad. Instead, enforce a sane number of results.
+          myAdjustedMaxCount = myAdjustedMaxCount == 0 ? 500 : myAdjustedMaxCount;
+
+          // No other parameters? Just get the most recent changesets.
+          args.append("reverse(user('").append(author).append("'))");
+        }
+      }
+
+
+      if (args.length()>0) {
+        List<String> logArgs = new ArrayList<String>();
+        logArgs.add("-r");
+        logArgs.add(args.toString());
+        return logArgs;
+      }
+
+      return null;
+    }
+
+    int getAdjustedMaxCount() {
+      return myAdjustedMaxCount;
+    }
+  }
 }
