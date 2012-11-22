@@ -210,7 +210,14 @@ abstract class HgRevisionsCommand {
       for (String files : filesList) {
         String[] file = files.split(" \\(");
         String target = file[0];
-        String source = file[1];
+        String source = null;
+        if (file.length > 1) {
+          source = file[1];
+        }
+        else {
+          // Can happen if the file being copied has a ")" in it.
+          source = "<unable to parse output>";
+        }
 
         copies.put(source, target);
       }
