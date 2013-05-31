@@ -192,6 +192,15 @@ public class FileHistoryPanelImpl extends PanelWithActionsAndCloseButton {
     public String getPreferredStringValue() {
       return "wip-somebranch";
     }
+
+    @Override
+    public int compare(VcsFileRevision o1, VcsFileRevision o2) {
+      int comparison = super.compare(o1, o2);
+      if ( 0 == comparison ) {
+        comparison = myRevisionsInOrderComparator.compare(o1, o2);
+      }
+      return comparison;
+    }
   };
 
   private boolean myColumnSizesSet;
