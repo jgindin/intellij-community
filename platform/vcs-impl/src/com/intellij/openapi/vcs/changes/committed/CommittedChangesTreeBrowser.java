@@ -345,7 +345,7 @@ public class CommittedChangesTreeBrowser extends JPanel implements TypeSafeDataP
     toolbarGroup.add(leadGroup);
     toolbarGroup.addSeparator();
     toolbarGroup.add(new SelectFilteringAction(project, this));
-    toolbarGroup.add(new SelectGroupingAction(this));
+    toolbarGroup.add(new SelectGroupingAction(project, this));
     final ExpandAllAction expandAllAction = new ExpandAllAction(myChangesTree);
     final CollapseAllAction collapseAllAction = new CollapseAllAction(myChangesTree);
     expandAllAction.registerCustomShortcutSet(
