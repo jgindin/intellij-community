@@ -14,6 +14,7 @@ package org.zmlx.hg4idea.test;
 
 import com.intellij.execution.process.ProcessOutput;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.vcs.VcsException;
 import com.intellij.openapi.vcs.update.UpdatedFiles;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -212,10 +213,11 @@ public class HgUpdateTest extends HgCollaborativeTest {
     assertTrue(warnings.get(warnings.size()-1).getMessage().contains("conflicts"));
     assertTrue(warnings.get(warnings.size()-1).getMessage().contains("commit"));
 
-    List<HgRevisionNumber> parents = new HgWorkingCopyRevisionsCommand(myProject).parents(projectRepoVirtualFile);
-    assertEquals(parents.size(), 2);
-    assertTrue(parents.contains(incomingHead));
-    assertTrue(parents.contains(headBeforeUpdate));
+    Pair<HgRevisionNumber, HgRevisionNumber> parents = new HgWorkingCopyRevisionsCommand(myProject).parents(projectRepoVirtualFile);
+    assertNotNull(parents.first);
+    assertNotNull(parents.second);
+    assertTrue(parents.first.equals(incomingHead));
+    assertTrue(parents.second.equals(headBeforeUpdate));
   }
 
   @Test
@@ -225,7 +227,7 @@ public class HgUpdateTest extends HgCollaborativeTest {
     //generate some extra local history
     createAndCommitNewFileInLocalRepository();
 
-    HgRevisionNumber parentBeforeUpdate = new HgWorkingCopyRevisionsCommand(myProject).parents(projectRepoVirtualFile).get(0);
+    HgRevisionNumber parentBeforeUpdate = new HgWorkingCopyRevisionsCommand(myProject).parents(projectRepoVirtualFile).first;
 
     editFileInCommand(myProject, projectRepoVirtualFile.findFileByRelativePath("com/a.txt"), "modified file contents");
 
@@ -234,10 +236,10 @@ public class HgUpdateTest extends HgCollaborativeTest {
     assertEquals( new HgHeadsCommand( myProject, projectRepoVirtualFile ).execute().size(), 2,
                   "Remote head should have been pulled in" );
 
-    assertEquals( new HgWorkingCopyRevisionsCommand( myProject ).parents( projectRepoVirtualFile ).size(), 1,
+    assertNull( new HgWorkingCopyRevisionsCommand( myProject ).parents( projectRepoVirtualFile ).second,
                   "No merge should have been attempted" );
 
-    assertEquals( new HgWorkingCopyRevisionsCommand( myProject ).parents( projectRepoVirtualFile ).get(0), parentBeforeUpdate,
+    assertEquals( new HgWorkingCopyRevisionsCommand( myProject ).parents( projectRepoVirtualFile ).first, parentBeforeUpdate,
                   "No merge should have been attempted" );
   }
 
