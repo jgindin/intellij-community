@@ -14,6 +14,7 @@ package org.zmlx.hg4idea;
 
 import com.google.common.base.Objects;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vcs.RepositoryLocation;
 import com.intellij.openapi.vcs.VcsException;
 import com.intellij.openapi.vcs.history.VcsFileRevision;
@@ -49,7 +50,7 @@ public class HgFileRevision implements VcsFileRevision {
     myProject = project;
     myFile = hgFile;
     myRevisionNumber = vcsRevisionNumber;
-    myBranchName = branchName;
+    myBranchName = StringUtil.isEmpty( branchName ) ? "default" : branchName;
     myRevisionDate = revisionDate;
     myAuthor = author;
     myCommitMessage = commitMessage;
