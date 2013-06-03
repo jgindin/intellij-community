@@ -29,6 +29,8 @@ import com.intellij.openapi.vcs.*;
 import com.intellij.openapi.vcs.annotate.AnnotationProvider;
 import com.intellij.openapi.vcs.changes.ChangeProvider;
 import com.intellij.openapi.vcs.changes.CommitExecutor;
+import com.intellij.openapi.vcs.changes.ui.ChangesViewContentI;
+import com.intellij.openapi.vcs.changes.ui.ChangesViewContentManager;
 import com.intellij.openapi.vcs.checkin.CheckinEnvironment;
 import com.intellij.openapi.vcs.diff.DiffProvider;
 import com.intellij.openapi.vcs.history.VcsHistoryProvider;
@@ -38,6 +40,8 @@ import com.intellij.openapi.vcs.update.UpdateEnvironment;
 import com.intellij.openapi.vcs.versionBrowser.CommittedChangeList;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentFactory;
 import com.intellij.util.containers.ComparatorDelegate;
 import com.intellij.util.containers.Convertor;
 import com.intellij.util.messages.MessageBusConnection;
@@ -305,6 +309,12 @@ public class HgVcs extends AbstractVcs<CommittedChangeList> {
         }
       });
     }
+
+    ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+    HgOutgoingViewProvider hgOutgoingViewProvider = new HgOutgoingViewProvider(myProject, myProject.getMessageBus(), commitedChangesProvider);
+    Content content = contentFactory.createContent(hgOutgoingViewProvider.initContent(), VcsBundle.message("outgoing.changes"), false);
+    ChangesViewContentI cvc = ChangesViewContentManager.getInstance(myProject);
+    cvc.addContent(content);
 
     // Force a branch topic update
     myProject.getMessageBus().syncPublisher(BRANCH_TOPIC).update(myProject, null);

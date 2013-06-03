@@ -68,6 +68,14 @@
       <add-to-group group-id="VcsGlobalGroup" anchor="after" relative-to-action="Vcs.Specific"/>
     </group>
 
+    <group id="OutgoingChangesToolbar">
+      <action id="OutgoingChanges.Refresh" class="org.zmlx.hg4idea.action.HgRefreshOutgoingAction"
+              icon="AllIcons.Actions.Refresh"/>
+      <reference ref="CommittedChanges.Details"/>
+      <reference ref="Vcs.UpdateProject"/>
+    </group>
+
+
   </actions>
 
   <resource-bundle>org.zmlx.hg4idea.HgVcsMessages</resource-bundle>

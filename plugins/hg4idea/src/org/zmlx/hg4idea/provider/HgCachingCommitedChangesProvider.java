@@ -230,16 +230,32 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
   }
 
 
+  public List<CommittedChangeList> getOutgoingChanges(RepositoryLocation repositoryLocation)
+    throws VcsException {
+
+    List<String> args = new ArrayList<String>();
+    args.add("-r outgoing()");
+
+    final List<CommittedChangeList> result = new LinkedList<CommittedChangeList>();
+    getChangesImpl(repositoryLocation, getUnlimitedCountValue(), args, new AsynchConsumer<HgCommittedChangeList>() {
+      @Override
+      public void finished() {
+      }
+
+      @Override
+      public void consume(HgCommittedChangeList hgCommittedChangeList) {
+        result.add( 0, hgCommittedChangeList );
+      }
+    });
+
+    return result;
+  }
+
+
   private void getCommittedChangesImpl(ChangeBrowserSettings settings, RepositoryLocation repositoryLocation, int maxCount,
                                         final AsynchConsumer<HgCommittedChangeList> committedChangeListAsynchConsumer)
     throws VcsException {
 
-    VirtualFile root = ((HgRepositoryLocation)repositoryLocation).getRoot();
-
-    HgFile hgFile = new HgFile(root, VcsUtil.getFilePath(root.getPath()));
-
-    HgLogCommand hgLogCommand = new HgLogCommand(project);
-    hgLogCommand.setLogFile(false);
     List<String> args = null;
     if (settings != null) {
       HgLogArgsBuilder argsBuilder = new HgLogArgsBuilder(settings, maxCount);
@@ -250,6 +266,22 @@ public class HgCachingCommitedChangesProvider implements CachingCommittedChanges
         maxCount = maxCount == 0 ? 500 : maxCount;
       }
     }
+
+    getChangesImpl(repositoryLocation, maxCount, args, committedChangeListAsynchConsumer);
+  }
+
+
+  private void getChangesImpl(RepositoryLocation repositoryLocation, int maxCount, @Nullable List<String> args,
+                              final AsynchConsumer<HgCommittedChangeList> committedChangeListAsynchConsumer)
+    throws VcsException {
+
+    VirtualFile root = ((HgRepositoryLocation)repositoryLocation).getRoot();
+
+    HgFile hgFile = new HgFile(root, VcsUtil.getFilePath(root.getPath()));
+
+    HgLogCommand hgLogCommand = new HgLogCommand(project);
+    hgLogCommand.setLogFile(false);
+
     final List<HgFileRevision> localRevisions;
     try {
       localRevisions = hgLogCommand.execute(hgFile, maxCount == 0 ? -1 : maxCount, true, args);
